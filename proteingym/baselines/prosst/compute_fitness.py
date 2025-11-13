@@ -28,8 +28,7 @@ def tokenize_structure_sequence(structure_sequence):
     )
 
 
-@torch.no_grad()
-def score_protein(model, tokenizer, residue_fasta, structure_fasta, mutant_df):
+def score_protein(model, tokenizer, residue_fasta, structure_fasta, mutant_df, proteinttt_cfg=None):
     sequence = read_seq(residue_fasta)
     structure_sequence = read_seq(structure_fasta)
 
@@ -39,12 +38,17 @@ def score_protein(model, tokenizer, residue_fasta, structure_fasta, mutant_df):
     input_ids = tokenized_results["input_ids"].to(device)
     attention_mask = tokenized_results["attention_mask"].to(device)
 
-    outputs = model(
-        input_ids=input_ids,
-        attention_mask=attention_mask,
-        ss_input_ids=ss_input_ids,
-        labels=input_ids,
-    )
+    if proteinttt_cfg:
+        model.ttt_reset()
+        model.ttt(input_ids=input_ids, ss_input_ids=ss_input_ids)
+
+    with torch.no_grad():
+        outputs = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            ss_input_ids=ss_input_ids,
+            labels=input_ids,
+        )
 
     logits = outputs.logits
     logits = torch.log_softmax(logits[:, 1:-1, :], dim=-1)
@@ -78,6 +82,7 @@ def main():
     parser.add_argument("--structure_dir", type=str, default=None, help="Directory containing FASTA files of structure sequences",)
     parser.add_argument("--mutant_dir", type=str, default=None, help="Directory containing CSV files with mutants",)
     parser.add_argument("--output_scores_folder", default=None, help="Directory to save scores")
+    parser.add_argument("--proteinttt_cfg", type=str, default=None, help="Path to ProteinTTT YAML config file. If None, ProteinTTT is not used.")
     args = parser.parse_args()
 
     print("Scoring proteins...")
@@ -97,8 +102,17 @@ def main():
         )
         model = model.to(device)
         tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+
+        if args.proteinttt_cfg:
+            from proteinttt.models.prosst import ProSSTTTT
+            model = ProSSTTTT.ttt_from_pretrained(model, ttt_cfg=args.proteinttt_cfg, config=model.config)
         
         for idx, protein_name in enumerate(protein_names):
+            output_scores_file = f"{args.output_scores_folder}/{protein_name}.csv"
+            if os.path.exists(output_scores_file):
+                print(f">>> Skipping {protein_name}, already scored")
+                continue
+
             print(f">>> Scoring {protein_name}, current {idx+1}/{len(protein_names)}...")
             if args.base_dir:
                 residue_fasta = f"{args.base_dir}/residue_sequence/{protein_name}.fasta"
@@ -120,6 +134,7 @@ def main():
                     residue_fasta=residue_fasta,
                     structure_fasta=structure_fasta,
                     mutant_df=mutant_df,
+                    proteinttt_cfg=args.proteinttt_cfg
                 )
             
             # remove the path from model_name
@@ -128,7 +143,7 @@ def main():
             corr = spearmanr(mutant_df["DMS_score"], mutant_df[model_name]).correlation
             print(f">>> {model_name} on {protein_name}: {corr}")
                 
-            mutant_df.to_csv(f"{args.output_scores_folder}/{protein_name}.csv", index=False)
+            mutant_df.to_csv(output_scores_file, index=False)
 
 
 if __name__ == "__main__":

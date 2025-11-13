@@ -13,9 +13,10 @@ export DMS_folder="${PROTEINGYM_CACHE}/ProSST_data"
 export DMS_residue_folder="${DMS_folder}/residue_sequence"
 export DMS_structure_folder="${DMS_folder}/structure_sequence"
 export DMS_data_folder_subs="${DMS_folder}/substitutions"
-export DMS_output_score_folder="${PROTEINGYM_CACHE}/zero_shot_substitutions_scores/ProSST-2048"
+export DMS_output_score_folder="${PROTEINGYM_CACHE}/zero_shot_substitutions_scores/ProSST-2048-ProteinTTT"
 
 python ../../proteingym/baselines/prosst/compute_fitness.py \
     --model_name ${model_name} \
     --base_dir ${DMS_folder} \
-    --output_scores_folder ${DMS_output_score_folder}
+    --output_scores_folder ${DMS_output_score_folder} \
+    --proteinttt_cfg ${PROTEINGYM_CACHE}/proteinttt_configs/ProSST-2048.yaml
