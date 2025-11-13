@@ -9,11 +9,11 @@ export model_name="AI4Protein/ProSST-$model_hyp"
 
 # the structure pdb files can be found in ProtSSN: https://github.com/tyang816/ProtSSN
 # please download and unzip the following files to a folder: https://drive.google.com/file/d/1lSckfPlx7FhzK1FX7EtmmXUOrdiMRerY/view?usp=sharing
-export DMS_folder="Path to unzipped data folder"
+export DMS_folder="${PROTEINGYM_CACHE}/ProSST_data"
 export DMS_residue_folder="${DMS_folder}/residue_sequence"
 export DMS_structure_folder="${DMS_folder}/structure_sequence"
 export DMS_data_folder_subs="${DMS_folder}/substitutions"
-export DMS_output_score_folder="Path to folder where all model predictions should be stored"
+export DMS_output_score_folder="${PROTEINGYM_CACHE}/zero_shot_substitutions_scores/ProSST-2048"
 
 python ../../proteingym/baselines/prosst/compute_fitness.py \
     --model_name ${model_name} \
